@@ -1,4 +1,6 @@
 import axios from 'axios';
+axios.defaults.headers.common['x-api-key'] =
+  '38592698-fb670dc072756c252ce931a2b';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
@@ -6,46 +8,23 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 const search = document.querySelector('.search-form');
 const gallery = document.querySelector('.gallery');
 const loadBtn = document.querySelector('.load-more');
+let searchWords;
 let currentPage = 1;
-
-let options = {
-  root: null,
-  rootMargin: '300px',
-  threshold: 1.0,
-};
-
-let observer = new IntersectionObserver(onLoad, options);
 
 loadBtn.style.display = 'none';
 
 search.addEventListener('submit', onSearch);
-
-function onLoad(entries, observer) {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      currentPage += 1;
-      getImages(searchWords, currentPage)
-        .then(data => {
-          console.log('dataload', data);
-          gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
-          if (data.page !== data.total_pages) {
-            observer.unobserve(target);
-          }
-        })
-        .catch(err => console.log(err));
-    }
-  });
-}
+loadBtn.addEventListener('click', onLoadClick);
 
 function onSearch(evt) {
   evt.preventDefault();
   loadBtn.style.display = 'none';
 
   const { searchQuery } = evt.currentTarget.elements;
-  const searchWords = searchQuery.value.split(' ').join('+');
+  searchWords = searchQuery.value.split(' ').join('+');
   console.log('searchWords', searchWords);
 
-  getImages(searchWords, currentPage)
+  getImages(searchWords)
     .then(data => {
       console.log('data.hits', data.hits);
 
@@ -57,24 +36,36 @@ function onSearch(evt) {
 
       gallery.innerHTML = createMarkup(data.hits);
 
-      observer.observe(target);
-
       const lightbox = new SimpleLightbox('.gallery a', {
         captionsData: 'alt',
         captionDelay: 250,
       });
-      console.log('lightbox', lightbox);
-
-      // gallery.on('error.simplelightbox', function (e) {
-      //   console.log(e);
-      // });
 
       loadBtn.style.display = 'block';
     })
     .catch(err => console.log(err));
 }
 
-function getImages(searchWords, currentPage) {
+function onLoadClick() {
+  currentPage += 1;
+
+  getImages(searchWords)
+    .then(data => {
+      console.log('data.hits', data.hits);
+
+      gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
+
+      const lightbox = new SimpleLightbox('.gallery a', {
+        captionsData: 'alt',
+        captionDelay: 250,
+      });
+
+      loadBtn.style.display = 'block';
+    })
+    .catch(err => console.log(err));
+}
+
+function getImages(searchWords) {
   const BASE_URL = 'https://pixabay.com/api/';
   const KEY = '38592698-fb670dc072756c252ce931a2b';
 
@@ -103,19 +94,23 @@ function createMarkup(arr) {
         downloads,
       }) => {
         return `<div class="photo-card">
-            <a href="${largeImageURL}"><img src="${webformatURL}" alt="${tags}" loading="lazy" width="200"/></a>
+            <a href="${largeImageURL}" class="photo-link"><img src="${webformatURL}" alt="${tags}" loading="lazy" class="photo-img"/></a>
             <div class="info">
               <p class="info-item">
-                <b>Likes ${likes}</b>
+                <b>Likes</b>
+                <span>${likes}</span>
               </p>
               <p class="info-item">
-                <b>Views ${views}</b>
+                <b>Views</b>
+                <span>${views}</span>
               </p>
               <p class="info-item">
-                <b>Comments ${comments}</b>
+                <b>Comments</b>
+                <span>${comments}</span>
               </p>
               <p class="info-item">
-                <b>Downloads ${downloads}</b>
+                <b>Downloads</b>
+                <span>${downloads}</span>
               </p>
             </div>
         </div>`;
