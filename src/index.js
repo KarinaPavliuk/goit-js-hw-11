@@ -8,8 +8,11 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 const search = document.querySelector('.search-form');
 const gallery = document.querySelector('.gallery');
 const loadBtn = document.querySelector('.load-more');
+
 let searchWords;
 let currentPage = 1;
+let dataLength;
+let totalLength = null;
 
 loadBtn.style.display = 'none';
 
@@ -22,26 +25,27 @@ function onSearch(evt) {
 
   const { searchQuery } = evt.currentTarget.elements;
   searchWords = searchQuery.value.split(' ').join('+');
-  console.log('searchWords', searchWords);
 
   getImages(searchWords)
     .then(data => {
-      console.log('data.hits', data.hits);
+      if (!searchWords) {
+        return Notify.failure('Please enter something in the search bar.');
+      }
 
-      if (data.hits.length) {
+      dataLength = data.hits.length;
+
+      if (dataLength) {
         Notify.success(`Hooray! We found ${data.totalHits} images.`);
+        loadBtn.style.display = 'block';
       } else {
-        Notify.failure('Oops! Something went wrong! Try reloading the page!');
+        Notify.failure(
+          'Sorry, there are no matching your search query. Please try again'
+        );
       }
 
       gallery.innerHTML = createMarkup(data.hits);
-
-      const lightbox = new SimpleLightbox('.gallery a', {
-        captionsData: 'alt',
-        captionDelay: 250,
-      });
-
-      loadBtn.style.display = 'block';
+      const lightbox = new SimpleLightbox('.gallery a');
+      totalLength += dataLength;
     })
     .catch(err => console.log(err));
 }
@@ -51,8 +55,6 @@ function onLoadClick() {
 
   getImages(searchWords)
     .then(data => {
-      console.log('data.hits', data.hits);
-
       gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
 
       const lightbox = new SimpleLightbox('.gallery a', {
@@ -61,6 +63,15 @@ function onLoadClick() {
       });
 
       loadBtn.style.display = 'block';
+
+      totalLength += dataLength;
+
+      if (totalLength > data.totalHits) {
+        loadBtn.style.display = 'none';
+        Notify.failure(
+          "We're sorry, but you've reached the end of search results."
+        );
+      }
     })
     .catch(err => console.log(err));
 }
@@ -72,7 +83,6 @@ function getImages(searchWords) {
   return fetch(
     `${BASE_URL}?key=${KEY}&q=${searchWords}&image_type=photo&orientation=horizontal&safesearch=true&page=${currentPage}&per_page=40`
   ).then(resp => {
-    console.log(resp);
     if (!resp.ok) {
       throw new Error(resp.statusText);
     }
@@ -81,7 +91,6 @@ function getImages(searchWords) {
 }
 
 function createMarkup(arr) {
-  console.log('arr', arr);
   return arr
     .map(
       ({
