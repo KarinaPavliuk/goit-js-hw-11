@@ -1,6 +1,4 @@
-import axios from 'axios';
-axios.defaults.headers.common['x-api-key'] =
-  '38592698-fb670dc072756c252ce931a2b';
+import { getImages } from './pixabay-api';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
@@ -10,13 +8,15 @@ const gallery = document.querySelector('.gallery');
 const loadBtn = document.querySelector('.load-more');
 
 let searchWords;
-let currentPage = 1;
 let dataLength;
-let totalLength = null;
+let totalLength = 0;
+let currentPage = 1;
+let lightBox;
 
 loadBtn.style.display = 'none';
 
 search.addEventListener('submit', onSearch);
+search.addEventListener('click', onSearchClick);
 loadBtn.addEventListener('click', onLoadClick);
 
 function onSearch(evt) {
@@ -24,49 +24,30 @@ function onSearch(evt) {
   loadBtn.style.display = 'none';
 
   const { searchQuery } = evt.currentTarget.elements;
-  searchWords = searchQuery.value.split(' ').join('+');
+  searchWords = searchQuery.value.trim().split(' ').join('+');
 
-  getImages(searchWords)
+  getImages(searchWords, currentPage)
     .then(data => {
-      if (!searchWords) {
-        return Notify.failure('Please enter something in the search bar.');
-      }
-
       dataLength = data.hits.length;
 
-      if (dataLength) {
-        Notify.success(`Hooray! We found ${data.totalHits} images.`);
-        loadBtn.style.display = 'block';
-      } else {
-        Notify.failure(
+      if (!searchWords) {
+        gallery.innerHTML = '';
+        return Notify.failure('Please enter something in the search bar.');
+      } else if (!dataLength) {
+        gallery.innerHTML = '';
+        return Notify.failure(
           'Sorry, there are no matching your search query. Please try again'
         );
       }
 
+      Notify.success(`Hooray! We found ${data.totalHits} images.`);
       gallery.innerHTML = createMarkup(data.hits);
-      const lightbox = new SimpleLightbox('.gallery a');
-      totalLength += dataLength;
-    })
-    .catch(err => console.log(err));
-}
-
-function onLoadClick() {
-  currentPage += 1;
-
-  getImages(searchWords)
-    .then(data => {
-      gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
-
-      const lightbox = new SimpleLightbox('.gallery a', {
-        captionsData: 'alt',
-        captionDelay: 250,
-      });
+      lightBox = new SimpleLightbox('.gallery a');
 
       loadBtn.style.display = 'block';
 
       totalLength += dataLength;
-
-      if (totalLength > data.totalHits) {
+      if (totalLength >= data.totalHits) {
         loadBtn.style.display = 'none';
         Notify.failure(
           "We're sorry, but you've reached the end of search results."
@@ -76,18 +57,29 @@ function onLoadClick() {
     .catch(err => console.log(err));
 }
 
-function getImages(searchWords) {
-  const BASE_URL = 'https://pixabay.com/api/';
-  const KEY = '38592698-fb670dc072756c252ce931a2b';
+function onSearchClick(evt) {
+  evt.target.value = '';
+}
 
-  return fetch(
-    `${BASE_URL}?key=${KEY}&q=${searchWords}&image_type=photo&orientation=horizontal&safesearch=true&page=${currentPage}&per_page=40`
-  ).then(resp => {
-    if (!resp.ok) {
-      throw new Error(resp.statusText);
-    }
-    return resp.json();
-  });
+function onLoadClick() {
+  currentPage += 1;
+
+  getImages(searchWords, currentPage)
+    .then(data => {
+      gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
+      lightBox.refresh();
+
+      loadBtn.style.display = 'block';
+
+      totalLength += dataLength;
+      if (totalLength >= data.totalHits) {
+        loadBtn.style.display = 'none';
+        Notify.failure(
+          "We're sorry, but you've reached the end of search results."
+        );
+      }
+    })
+    .catch(err => console.log(err));
 }
 
 function createMarkup(arr) {
