@@ -9,8 +9,8 @@ const loadBtn = document.querySelector('.load-more');
 
 let searchWords;
 let dataLength;
-let totalLength = 0;
-let currentPage = 1;
+let totalLength;
+let currentPage;
 let lightBox;
 
 loadBtn.style.display = 'none';
@@ -22,6 +22,8 @@ loadBtn.addEventListener('click', onLoadClick);
 function onSearch(evt) {
   evt.preventDefault();
   loadBtn.style.display = 'none';
+  currentPage = 1;
+  totalLength = 0;
 
   const { searchQuery } = evt.currentTarget.elements;
   searchWords = searchQuery.value.trim().split(' ').join('+');
